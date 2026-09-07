@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const { signToken, verifyToken, hashApiKey, verifyPassword, RateLimiter } = require('./auth');
 const registry = require('./templates/registry');
 const config = require('./config');
+const SECRET = config.jwtSecret;
 
 function createRouter(store, supervisor) {
   const routes = [];
@@ -51,7 +52,7 @@ function createRouter(store, supervisor) {
   async function authenticate(req) {
     const auth = String(req.headers.authorization || '');
     if (auth.startsWith('Bearer ')) {
-      const payload = verifyToken(auth.slice(7));
+      const payload = verifyToken(auth.slice(7), SECRET);
       if (payload) {
         const user = store.getUser(payload.sub);
         if (user) return user;
@@ -95,7 +96,7 @@ function createRouter(store, supervisor) {
     if (!user || !verifyPassword(String(body.password || ''), user.passwordHash)) {
       throw httpError(401, 'invalid email or password');
     }
-    return { token: signToken({ sub: user.id, role: user.role }), user: publicUser(user) };
+    return { token: signToken({ sub: user.id, role: user.role }, SECRET), user: publicUser(user) };
   });
 
   add('POST', '/api/auth/register', async (c) => {
@@ -107,7 +108,7 @@ function createRouter(store, supervisor) {
       name: String(body.name || '').trim(),
       password,
     });
-    return { token: signToken({ sub: user.id, role: user.role }), user: publicUser(user) };
+    return { token: signToken({ sub: user.id, role: user.role }, SECRET), user: publicUser(user) };
   });
 
   add('GET', '/api/auth/me', async (c) => ({ user: publicUser(await requireAuth(c.user)) }));
