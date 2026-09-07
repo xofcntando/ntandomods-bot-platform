@@ -171,7 +171,7 @@ function createRouter(store, supervisor) {
       autoRestart: body.autoRestart !== false,
       memoryLimitMb: Number(body.memoryLimitMb) || 0,
     });
-    const dep = store.addDeployment(bot.id, bot.ownerId, 'manual');
+    const dep = store.addDeployment({ botId: bot.id, ownerId: bot.ownerId, trigger: 'manual' });
     let started = null;
     if (body.start !== false) {
       started = await supervisor.start(bot, { deployId: dep.id });
@@ -226,7 +226,7 @@ function createRouter(store, supervisor) {
     if (!canSee(user, bot)) throw httpError(403, 'not your bot');
 
     if (action === 'start') {
-      const dep = store.addDeployment(bot.id, bot.ownerId, 'restart');
+      const dep = store.addDeployment({ botId: bot.id, ownerId: bot.ownerId, trigger: 'restart' });
       const started = await supervisor.start(bot, { deployId: dep.id });
       return { ok: true, started, liveUrl: liveUrl(bot) };
     }
@@ -236,7 +236,7 @@ function createRouter(store, supervisor) {
     }
     if (action === 'restart') {
       await supervisor.stop(bot.id, { persist: false }).catch(() => {});
-      const dep = store.addDeployment(bot.id, bot.ownerId, 'restart');
+      const dep = store.addDeployment({ botId: bot.id, ownerId: bot.ownerId, trigger: 'restart' });
       const started = await supervisor.start(bot, { deployId: dep.id });
       return { ok: true, started, liveUrl: liveUrl(bot) };
     }
