@@ -249,10 +249,10 @@ function createSupervisor(store) {
           return respond({ ok: true });
         }
         case 'listTemplates': {
-          return respond(registry.list());
+          return respond({ templates: registry.list() });
         }
         case 'supervisorStats': {
-          return respond(platformStats());
+          return respond({ stats: platformStats() });
         }
         case 'botStatus': {
           const b = await store.getBot(payload.id || payload.slug);
