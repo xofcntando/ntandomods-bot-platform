@@ -91,7 +91,7 @@ function createRouter(store, supervisor) {
 
   add('POST', '/api/auth/login', async (c) => {
     const body = await readBody(c.req);
-    const user = store.getUserByEmail(String(body.email || '').toLowerCase());
+    const user = await store.getByEmail(String(body.email || '').toLowerCase());
     if (!user || !verifyPassword(String(body.password || ''), user.passwordHash)) {
       throw httpError(401, 'invalid email or password');
     }
