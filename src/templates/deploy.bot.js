@@ -26,12 +26,13 @@ async function runPipeline({ name, template, env }, job) {
   step('validate-template', 'ok', `${tpl.icon} ${tpl.name} (${template})`);
 
   // 2) create the bot record
-  const bot = await host.platformCall('createBot', { name, template, env: env || {}, autoRestart: true });
+  const created = await host.platformCall('createBot', { name, template, env: env || {}, autoRestart: true });
+  const bot = created.bot;
   step('create-bot', 'ok', `bot "${bot.slug}" created (id ${bot.id}, port ${bot.port})`);
 
   // 3) record a deployment
-  const dep = await host.platformCall('addDeployment', { botId: bot.id, trigger: 'pipeline:' + spec.slug, template, name });
-  step('record-deployment', 'ok', `deployment #${dep.id} recorded`);
+  const depRes = await host.platformCall('addDeployment', { botId: bot.id, trigger: 'pipeline:' + spec.slug, template, name });
+  step('record-deployment', 'ok', `deployment #${depRes.dep.id} recorded`);
 
   // 4) start it
   const started = await host.platformCall('startBot', { slug: bot.slug });
