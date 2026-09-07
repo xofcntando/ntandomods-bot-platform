@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ntandomods Bot Platform</title>
+<link rel="icon" href="data:image/svg+xml,&lt;svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'&gt;&lt;text y='.9em' font-size='90'&gt;🤖&lt;/text&gt;&lt;/svg&gt;">
+<link rel="stylesheet" href="css/dashboard.css">
+<script src="https://sites.super.myninja.ai/_assets/ninja-daytona-script.js"></script>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="loginView">
+  <div class="login-card">
+    <h1>🤖 Ntandomods Bot Platform</h1>
+    <p class="tag">Deploy · monitor · manage your bots</p>
+    <form id="loginForm">
+      <label for="loginEmail">Email</label>
+      <input id="loginEmail" type="text" autocomplete="username" placeholder="admin@ntandomods.local">
+      <label for="loginPassword">Password</label>
+      <input id="loginPassword" type="password" autocomplete="current-password" placeholder="••••••••">
+      <button type="submit">Sign in</button>
+    </form>
+    <div class="login-err" id="loginErr"></div>
+    <p class="alt">No account? <a id="registerLink">Register</a></p>
+  </div>
+link
+</div>
+
+<!-- ============ APP ============ -->
+<div id="appView">
+  <div class="topbar">
+    <div class="brand">🤖 Bot Platform <span>by Ntandomods</span></div>
+    <div class="who">signed in as <b id="whoami"></b></div>
+    <button id="logoutBtn">Log out</button>
+  </div>
+
+  <main>
+    <!-- stats -->
+    <div class="statrow">
+      <div class="stat"><div class="num" id="statBots">–</div><div class="lbl">Bots</div></div>
+      <div class="stat green"><div class="num" id="statRunning">–</div><div class="lbl">Running</div></div>
+      <div class="stat red"><div class="num" id="statCrashed">–</div><div class="lbl">Crashed</div></div>
+      <div class="stat violet"><div class="num" id="statRestarts">–</div><div class="lbl">Restarts</div></div>
+      <div class="stat"><div class="num" id="statMem">–</div><div class="lbl">Memory</div></div>
+      <div class="stat"><div class="num" id="statUsers">–</div><div class="lbl">Users</div></div>
+    </div>
+
+    <!-- bots -->
+    <div class="section-head">
+      <h2><em>⚙️</em> Your bots</h2>
+      <div class="actions"><button class="btn primary" id="newBotBtn">+ New Bot</button></div>
+    </div>
+    <div class="botgrid" id="botGrid"></div>
+
+    <!-- api keys -->
+    <details class="panel" id="keysPanel">
+      <summary>🔑 API Keys</summary>
+      <div class="inner">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+          <input id="keyName" type="text" placeholder="key name (e.g. ci-deploy)" style="flex:1;background:var(--bg);border:1px solid var(--border2);color:var(--text);padding:9px 11px;border-radius:8px;font-size:12.5px">
+          <button class="btn primary" id="keyCreateBtn">Create key</button>
+        </div>
+        <div class="secret-box" id="secretBox" style="display:none">
+          <span id="secretValue"></span>
+          <button class="btn" id="copySecret">Copy</button>
+        </div>
+        <table>
+          <thead><tr><th>Name</th><th>Prefix</th><th>Created</th><th></th></tr></thead>
+          <tbody id="keyTable"></tbody>
+        </table>
+      </div>
+    </details>
+
+    <!-- deployments -->
+    <details class="panel" id="depsPanel">
+      <summary>📦 Deployments</summary>
+      <div class="inner">
+        <table>
+          <thead><tr><th>#</th><th>Bot</th><th>Trigger</th><th>Status</th><th>When</th></tr></thead>
+          <tbody id="depTable"></tbody>
+        </table>
+      </div>
+    </details>
+
+  </main>
+</div>
+
+<!-- ============ LOG MODAL ============ -->
+<div class="modal-bg" id="logModal">
+  <div class="modal">
+    <button class="close-x" data-close="logModal">✕</button>
+    <h3 id="logTitle">Logs</h3>
+    <p class="sub">Live tail · refreshes every 2s · closes with ✕</p>
+    <div class="logbox" id="logBox">loading…</div>
+  </div>
+</div>
+
+<!-- ============ NEW BOT MODAL ============ -->
+<div class="modal-bg" id="wizardModal">
+  <div class="modal">
+    <button class="close-x" data-close="wizardModal">✕</button>
+    <h3>Deploy a new bot</h3>
+    <p class="sub">Pick a template, configure, deploy — takes ~2 seconds.</p>
+
+    <label for="botName">Bot name</label>
+    <input id="botName" type="text" placeholder="My Site Monitor">
+
+    <label>Template</label>
+    <div class="tplgrid" id="wizardTplGrid"></div>
+
+    <div id="tplFields"></div>
+
+    <div class="chk">
+      <input type="checkbox" id="botAutoRestart" checked>
+      <label for="botAutoRestart">Auto-restart on crash (exponential backoff)</label>
+    </div>
+
+    <div class="foot">
+      <button class="btn" data-close="wizardModal">Cancel</button>
+      <button class="btn primary" id="deployBtn">Deploy</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ CHAT WIDGET ============ -->
+<button id="chatFab" title="Assistant">💬</button>
+<div id="chatWidget">
+  <div class="cw-head">🤖 <span>Assistant</span> <button id="chatClose">✕</button></div>
+  <div class="cw-log" id="chatLog"></div>
+  <form id="chatForm">
+    <input id="chatInput" autocomplete="off" placeholder="status · deploy X monitor · help">
+    <button type="submit" class="send">Send</button>
+  </form>
+</div>
+
+<div id="toastZone"></div>
+
+<script src="js/dashboard.js"></script>
+</body>
+</html>
