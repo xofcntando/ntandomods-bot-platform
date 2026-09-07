@@ -212,7 +212,7 @@ function createSupervisor(store) {
         }
         case 'listBots': {
           const list = await store.listBots({ ownerId: bot.ownerId });
-          return respond(list);
+          return respond({ bots: list });
         }
         case 'createBot': {
           const created = await store.createBot({
@@ -223,7 +223,7 @@ function createSupervisor(store) {
             autoRestart: payload.autoRestart !== false,
             memoryLimitMb: payload.memoryLimitMb || 0,
           });
-          return respond(created);
+          return respond({ bot: created, liveUrl: _liveUrl(created) });
         }
         case 'startBot': {
           const b = await store.getBot(payload.id || payload.slug);
@@ -263,7 +263,7 @@ function createSupervisor(store) {
           const b = await store.getBot(payload.id || payload.slug);
           if (!b) return fail('bot not found');
           if (b.ownerId !== bot.ownerId) return fail('not your bot');
-          return respond(logs(b.id, payload.tail || 50));
+          return respond({ logs: logs(b.id, payload.tail || 50) });
         }
         case 'addDeployment': {
           const d = await store.addDeployment({
@@ -271,7 +271,7 @@ function createSupervisor(store) {
             trigger: payload.trigger || 'bot:' + bot.slug,
             template: payload.template, name: payload.name,
           });
-          return respond(d);
+          return respond({ dep: d });
         }
         case 'updateDeployment': {
           const d = await store.getDeployment(payload.id);
