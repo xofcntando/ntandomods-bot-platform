@@ -14,14 +14,15 @@ const HISTORY_MAX = 100;
 function auditOnce(trigger = 'interval') {
   const anomalies = [];
   return host.platformCall('supervisorStats')
-    .then((sup) => {
+    .then((supRes) => {
+      const sup = supRes && supRes.stats;
       if (!sup || sup.crashed > 0) anomalies.push(`supervisor reports ${sup ? sup.crashed : '?'} crashed bot(s)`);
       if (sup && sup.botsTotal === 0) anomalies.push('no bots registered under this owner');
       return host.platformCall('listBots');
     })
-    .then((bots) => {
+    .then((botsRes) => {
       let chain = Promise.resolve();
-      for (const b of bots) {
+      for (const b of (botsRes && botsRes.bots) || []) {
         chain = chain.then(() => host.platformCall('botStatus', { slug: b.slug }).then((st) => {
           const rt = st && st.runtime;
           if (rt && rt.status === 'crashed') anomalies.push(`bot "${b.slug}" is crashed`);
