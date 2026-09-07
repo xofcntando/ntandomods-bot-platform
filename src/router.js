@@ -54,17 +54,17 @@ function createRouter(store, supervisor) {
     if (auth.startsWith('Bearer ')) {
       const payload = verifyToken(auth.slice(7), SECRET);
       if (payload) {
-        const user = store.getUser(payload.sub);
+        const user = await store.getUser(payload.sub);
         if (user) return user;
       }
       return null;
     }
     const apiKey = req.headers['x-api-key'];
     if (apiKey) {
-      const record = store.findApiKeyByHash(hashApiKey(apiKey));
+      const record = await store.findApiKeyByHash(hashApiKey(apiKey));
       if (record) {
-        store.touchApiKey(record.id);
-        return store.getUser(record.userId);
+        await store.touchApiKey(record.id);
+        return await store.getUser(record.userId);
       }
       return null;
     }
@@ -103,7 +103,7 @@ function createRouter(store, supervisor) {
     const body = await readBody(c.req);
     const password = String(body.password || '');
     if (password.length < 8) throw httpError(400, 'password must be at least 8 characters');
-    const user = store.createUser({
+    const user = await store.createUser({
       email: String(body.email || '').toLowerCase(),
       name: String(body.name || '').trim(),
       password,
@@ -123,13 +123,13 @@ function createRouter(store, supervisor) {
   // ---------------- api keys ----------------
   add('GET', '/api/keys', async (c) => {
     await requireAuth(c.user);
-    return { keys: store.listApiKeys(c.user.id) };
+    return { keys: await store.listApiKeys(c.user.id) };
   });
 
   add('POST', '/api/keys', async (c) => {
     const user = await requireAuth(c.user);
     const body = await readBody(c.req);
-    const created = store.createApiKey(user.id, String(body.name || 'api key').slice(0, 60));
+    const created = await store.createApiKey(user.id, String(body.name || 'api key').slice(0, 60));
     return {
       key: { id: created.id, name: created.name, prefix: created.prefix, createdAt: created.createdAt },
       secret: created.secret,
@@ -140,17 +140,17 @@ function createRouter(store, supervisor) {
   add('DELETE', '/api/keys/:id', async (c) => {
     const user = await requireAuth(c.user);
     const id = Number(c.params.id);
-    const keys = store.listApiKeys(user.id);
+    const keys = await store.listApiKeys(user.id);
     const target = keys.find((k) => k.id === id);
     if (!target) throw httpError(404, 'no such key');
-    store.revokeApiKey(id);
+    await store.revokeApiKey(id);
     return { ok: true, revoked: id };
   });
 
   // ---------------- bots ----------------
   add('GET', '/api/bots', async (c) => {
     const user = await requireAuth(c.user);
-    const all = store.listBots();
+    const all = await store.listBots();
     const bots = user.role === 'admin'
       ? (c.query.owner !== undefined ? all.filter((b) => b.ownerId === Number(c.query.owner)) : all)
       : all.filter((b) => b.ownerId === user.id);
@@ -163,7 +163,7 @@ function createRouter(store, supervisor) {
     const template = registry.get(String(body.template || ''));
     const env = body.env || {};
     registry.validate(template.key, env);
-    const bot = store.createBot({
+    const bot = await store.createBot({
       name: String(body.name || '').trim() || `${template.key}-bot`,
       template: template.key,
       env,
@@ -171,17 +171,17 @@ function createRouter(store, supervisor) {
       autoRestart: body.autoRestart !== false,
       memoryLimitMb: Number(body.memoryLimitMb) || 0,
     });
-    const dep = store.addDeployment({ botId: bot.id, ownerId: bot.ownerId, trigger: 'manual' });
+    const dep = await store.addDeployment({ botId: bot.id, ownerId: bot.ownerId, trigger: 'manual' });
     let started = null;
     if (body.start !== false) {
       started = await supervisor.start(bot, { deployId: dep.id });
     }
-    return { bot: mergeRuntime(store.getBot(bot.id)), deployment: dep, started, liveUrl: liveUrl(bot) };
+    return { bot: mergeRuntime(await store.getBot(bot.id)), deployment: dep, started, liveUrl: liveUrl(bot) };
   });
 
   add('GET', '/api/bots/:id', async (c) => {
     const user = await requireAuth(c.user);
-    const bot = store.getBot(c.params.id);
+    const bot = await store.getBot(c.params.id);
     if (!bot) throw httpError(404, 'no such bot');
     if (!canSee(user, bot)) throw httpError(403, 'not your bot');
     return { bot: mergeRuntime(bot) };
@@ -189,7 +189,7 @@ function createRouter(store, supervisor) {
 
   add('PATCH', '/api/bots/:id', async (c) => {
     const user = await requireAuth(c.user);
-    const bot = store.getBot(c.params.id);
+    const bot = await store.getBot(c.params.id);
     if (!bot) throw httpError(404, 'no such bot');
     if (!canSee(user, bot)) throw httpError(403, 'not your bot');
     const body = await readBody(c.req);
@@ -201,32 +201,32 @@ function createRouter(store, supervisor) {
     }
     if (body.autoRestart !== undefined) patch.autoRestart = !!body.autoRestart;
     if (body.memoryLimitMb !== undefined) patch.memoryLimitMb = Number(body.memoryLimitMb) || 0;
-    const updated = store.updateBot(bot.id, patch);
+    const updated = await store.updateBot(bot.id, patch);
     const rt = supervisor.describe(bot.id);
     const needsRestart = patch.env !== undefined && rt && ['running', 'starting'].includes(rt.status);
     if (needsRestart) supervisor.restart(updated).catch(() => {});
-    return { bot: mergeRuntime(store.getBot(bot.id)), restarted: needsRestart };
+    return { bot: mergeRuntime(await store.getBot(bot.id)), restarted: needsRestart };
   });
 
   add('DELETE', '/api/bots/:id', async (c) => {
     const user = await requireAuth(c.user);
-    const bot = store.getBot(c.params.id);
+    const bot = await store.getBot(c.params.id);
     if (!bot) throw httpError(404, 'no such bot');
     if (!canSee(user, bot)) throw httpError(403, 'not your bot');
     await supervisor.remove(bot.id).catch(() => {});
-    store.deleteBot(bot.id);
+    await store.deleteBot(bot.id);
     return { ok: true, deleted: bot.slug };
   });
 
   // ---------------- lifecycle ----------------
   const lifecycle = (action) => async (c) => {
     const user = await requireAuth(c.user);
-    const bot = store.getBot(c.params.id);
+    const bot = await store.getBot(c.params.id);
     if (!bot) throw httpError(404, 'no such bot');
     if (!canSee(user, bot)) throw httpError(403, 'not your bot');
 
     if (action === 'start') {
-      const dep = store.addDeployment({ botId: bot.id, ownerId: bot.ownerId, trigger: 'restart' });
+      const dep = await store.addDeployment({ botId: bot.id, ownerId: bot.ownerId, trigger: 'restart' });
       const started = await supervisor.start(bot, { deployId: dep.id });
       return { ok: true, started, liveUrl: liveUrl(bot) };
     }
@@ -236,17 +236,17 @@ function createRouter(store, supervisor) {
     }
     if (action === 'restart') {
       await supervisor.stop(bot.id, { persist: false }).catch(() => {});
-      const dep = store.addDeployment({ botId: bot.id, ownerId: bot.ownerId, trigger: 'restart' });
+      const dep = await store.addDeployment({ botId: bot.id, ownerId: bot.ownerId, trigger: 'restart' });
       const started = await supervisor.start(bot, { deployId: dep.id });
       return { ok: true, started, liveUrl: liveUrl(bot) };
     }
     if (action === 'disable') {
       await supervisor.stop(bot.id).catch(() => {});
-      store.updateBot(bot.id, { autoRestart: false });
+      await store.updateBot(bot.id, { autoRestart: false });
       return { ok: true, disabled: true };
     }
     if (action === 'enable') {
-      store.updateBot(bot.id, { autoRestart: true });
+      await store.updateBot(bot.id, { autoRestart: true });
       return { ok: true, enabled: true };
     }
     throw httpError(400, 'unknown action');
@@ -258,7 +258,7 @@ function createRouter(store, supervisor) {
   // ---------------- logs / stats / deployments ----------------
   add('GET', '/api/bots/:id/logs', async (c) => {
     const user = await requireAuth(c.user);
-    const bot = store.getBot(c.params.id);
+    const bot = await store.getBot(c.params.id);
     if (!bot) throw httpError(404, 'no such bot');
     if (!canSee(user, bot)) throw httpError(403, 'not your bot');
     const tail = Math.min(Number(c.query.tail) || 50, 500);
@@ -267,7 +267,7 @@ function createRouter(store, supervisor) {
 
   add('GET', '/api/bots/:id/stats', async (c) => {
     const user = await requireAuth(c.user);
-    const bot = store.getBot(c.params.id);
+    const bot = await store.getBot(c.params.id);
     if (!bot) throw httpError(404, 'no such bot');
     if (!canSee(user, bot)) throw httpError(403, 'not your bot');
     return { bot: bot.slug, runtime: supervisor.describe(bot.id), liveUrl: liveUrl(bot) };
@@ -275,16 +275,16 @@ function createRouter(store, supervisor) {
 
   add('GET', '/api/bots/:id/deployments', async (c) => {
     const user = await requireAuth(c.user);
-    const bot = store.getBot(c.params.id);
+    const bot = await store.getBot(c.params.id);
     if (!bot) throw httpError(404, 'no such bot');
     if (!canSee(user, bot)) throw httpError(403, 'not your bot');
-    return { deployments: store.listDeployments({ botId: bot.id, limit: 20 }) };
+    return { deployments: await store.listDeployments({ botId: bot.id, limit: 20 }) };
   });
 
   add('GET', '/api/deployments', async (c) => {
     const user = await requireAuth(c.user);
     const limit = Math.min(Number(c.query.limit) || 20, 100);
-    const deps = store.listDeployments({ limit });
+    const deps = await store.listDeployments({ limit });
     const visible = user.role === 'admin' ? deps : deps.filter((d) => d.ownerId === user.id);
     return { deployments: visible };
   });
@@ -309,7 +309,7 @@ function createRouter(store, supervisor) {
     const body = await readBody(c.req);
     const password = String(body.password || '');
     if (password.length < 8) throw httpError(400, 'password must be at least 8 characters');
-    const user = store.createUser({
+    const user = await store.createUser({
       email: String(body.email || '').toLowerCase(),
       name: String(body.name || '').trim(),
       password,
@@ -322,7 +322,7 @@ function createRouter(store, supervisor) {
     const admin = await requireAdmin(await requireAuth(c.user));
     const id = Number(c.params.id);
     if (id === admin.id) throw httpError(400, 'cannot delete yourself');
-    const ok = store.deleteUser(id);
+    const ok = await store.deleteUser(id);
     if (!ok) throw httpError(404, 'no such user');
     return { ok: true, deleted: id };
   });
@@ -330,7 +330,7 @@ function createRouter(store, supervisor) {
   add('GET', '/api/admin/logs', async (c) => {
     await requireAdmin(await requireAuth(c.user));
     const all = [];
-    for (const bot of store.listBots()) {
+    for (const bot of await store.listBots()) {
       for (const line of supervisor.logs(bot.id, 50)) all.push(`[${bot.slug}] ${line}`);
     }
     all.sort(() => 0);
