@@ -294,14 +294,14 @@ function createRouter(store, supervisor) {
     const user = await requireAuth(c.user);
     const stats = supervisor.platformStats();
     return {
-      stats: { ...stats, users: store.users.length, maxBots: config.maxBots, platformUptimeSec: Math.round(process.uptime()) },
+      stats: { ...stats, users: (await store.listUsers()).length, maxBots: config.maxBots, platformUptimeSec: Math.round(process.uptime()) },
     };
   });
 
   // ---------------- admin ----------------
   add('GET', '/api/admin/users', async (c) => {
     await requireAdmin(await requireAuth(c.user));
-    return { users: store.users.map(publicUser) };
+    return { users: (await store.listUsers()).map(publicUser) };
   });
 
   add('POST', '/api/admin/users', async (c) => {
