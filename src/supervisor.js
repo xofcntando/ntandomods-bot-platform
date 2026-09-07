@@ -160,7 +160,8 @@ function createSupervisor(store) {
     const rt = runtimes.get(botId);
     if (!rt) return [];
     const n = Math.max(1, Math.min(500, Number(tail) || 100));
-    return rt.logRing.slice(-n);
+    // entries are {t, line, err} — surface as plain strings for API + templates
+    return rt.logRing.slice(-n).map((e) => (e && e.line !== undefined ? `${e.t} ${e.err ? '[err] ' : ''}${e.line}` : String(e)));
   }
 
   // ── IPC message handling ──────────────────────────────────────
